@@ -283,13 +283,34 @@ if choice == "Admin":
             st.error("User not found")
 
     st.markdown("---")
-    st.subheader("Deactivate User")
-    active_users = db.query(User).filter(User.active == True, User.is_admin == False).all()
-    sel = st.selectbox("Select user", [f"{u.name} ({u.email}) – {u.role} – {u.specialization}" for u in active_users])
-    if st.button("Deactivate", key="deactivate_btn"):
-        for u in active_users:
-            if f"{u.name} ({u.email}) – {u.role} – {u.specialization}" == sel:
-                u.active = False; db.commit(); st.success("User deactivated.")
+
+    st.subheader("Activate / Deactivate User")
+
+    users = db.query(User).filter(User.is_admin == False).order_by(User.name).all()
+
+    def user_label(u):
+        status = "🟢 Active" if u.active else "🔴 Inactive"
+        return f"{u.name} ({u.email}) – {u.role} – {u.specialization} – {status}"
+
+    selected_label = st.selectbox(
+        "Select user",
+        [user_label(u) for u in users]
+    )
+
+    selected_user = next(u for u in users if user_label(u) == selected_label)
+
+    action_label = "Deactivate User" if selected_user.active else "Reactivate User"
+    button_color = "secondary" if selected_user.active else "primary"
+
+    if st.button(action_label, key="toggle_user_btn", type=button_color):
+        selected_user.active = not selected_user.active
+        db.commit()
+        st.success(
+            f"User {'deactivated' if not selected_user.active else 'reactivated'} successfully."
+        )
+        st.rerun()
+
+                
     st.markdown("---")
     st.dataframe(pd.read_sql(db.query(User).statement, db.bind)[["id","name","email","role","specialization","location","active"]])
     
